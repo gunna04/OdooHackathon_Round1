@@ -32,6 +32,13 @@ VideoLink:https://drive.google.com/file/d/1UgDX076e_AsHY9RxB26xFd0cEN884vmE/view
 - JWT for authentication
 - CORS enabled
 
+  
+<img src = "https://github.com/overlord00007/overlord00007/blob/main/ss1.jpeg" style="width:600px">
+<img src = "https://github.com/overlord00007/overlord00007/blob/main/ss2.jpeg" style="width:600px">
+<img src = "https://github.com/overlord00007/overlord00007/blob/main/ss3.jpeg" style="width:600px">
+<img src = "https://github.com/overlord00007/overlord00007/blob/main/ss4.jpeg" style="width:600px">
+<img src = "https://github.com/overlord00007/overlord00007/blob/main/ss5.jpeg" style="width:600px">
+
 ## Prerequisites
 
 - Node.js (v16 or higher)
