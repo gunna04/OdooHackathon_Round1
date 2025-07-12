@@ -1,7 +1,17 @@
-### Problem Statement 1 
-    Skill Swap Platform 
+## 📌 Problem Statement
 
-### Team Members 
+**SkillSwap – A Peer-to-Peer Skill Exchange Platform**  
+Build a fullstack web app that allows users to offer and request skills in return, supporting swap requests, search by skills, and basic feedback after exchanges. Includes role-based authentication and an admin dashboard for moderation and platform insights.
 
-1. Tishya Jha ( tishyajha04@gmail.com)
-2. Yuvraj Singh ( yuvrajsingh0251@gmail.com)
+---
+
+## 👥 Team Members
+
+- **Name:** TISHYA JHA  
+  **Email:** [TISHYAJHA04@GMAIL.COM
+
+- **Name:** YUVRAJ SINGH
+  **Email:** YUVRAJSINGH0251@GMAIL.COM
+
+---
+
