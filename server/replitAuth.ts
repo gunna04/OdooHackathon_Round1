@@ -72,20 +72,30 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  console.log(`[Auth] Setting up authentication for domains: ${process.env.REPLIT_DOMAINS}`);
+  console.log(`[Auth] REPL_ID: ${process.env.REPL_ID ? 'Set' : 'Missing'}`);
+  
   const config = await getOidcConfig();
 
   const verify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+    try {
+      const user = {};
+      updateUserSession(user, tokens);
+      await upsertUser(tokens.claims());
+      console.log(`[Auth] User authenticated successfully: ${tokens.claims()?.sub}`);
+      verified(null, user);
+    } catch (error) {
+      console.error(`[Auth] Verification failed:`, error);
+      verified(error);
+    }
   };
 
   for (const domain of process.env
     .REPLIT_DOMAINS!.split(",")) {
+    console.log(`[Auth] Registering strategy for domain: ${domain}`);
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
@@ -102,6 +112,7 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
+    console.log(`[Auth] Login attempt for hostname: ${req.hostname}`);
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
@@ -109,9 +120,10 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
+    console.log(`[Auth] Callback received for hostname: ${req.hostname}`);
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+      failureRedirect: "/api/login?error=auth_failed",
     })(req, res, next);
   });
 
