@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(207, 37%, 97%);
+  --foreground: hsl(0, 0%, 18%);
+  --muted: hsl(210, 14%, 95%);
+  --muted-foreground: hsl(0, 0%, 45%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(0, 0%, 18%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(0, 0%, 18%);
+  --border: hsl(210, 14%, 89%);
+  --input: hsl(210, 14%, 89%);
+  --primary: hsl(245, 58%, 51%);
+  --primary-foreground: hsl(210, 100%, 98%);
+  --secondary: hsl(210, 14%, 95%);
+  --secondary-foreground: hsl(0, 0%, 18%);
+  --accent: hsl(210, 14%, 95%);
+  --accent-foreground: hsl(0, 0%, 18%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(210, 100%, 98%);
+  --ring: hsl(245, 58%, 51%);
+  --radius: 0.5rem;
+  
+  /* SkillSwap custom colors */
+  --platform-bg: hsl(207, 37%, 97%);
+  --platform-text: hsl(0, 0%, 18%);
+  --platform-accent: hsl(245, 58%, 51%);
+  --platform-secondary: hsl(245, 63%, 97%);
+  --platform-surface: hsl(0, 0%, 100%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 4%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 4%, 16%);
+  --muted-foreground: hsl(240, 5%, 65%);
+  --popover: hsl(240, 10%, 4%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 4%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 4%, 16%);
+  --input: hsl(240, 4%, 16%);
+  --primary: hsl(245, 58%, 51%);
+  --primary-foreground: hsl(210, 100%, 98%);
+  --secondary: hsl(240, 4%, 16%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 4%, 16%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 63%, 31%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 5%, 84%);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased;
+    background-color: var(--platform-bg);
+    color: var(--platform-text);
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .skill-chip {
+    transition: all 0.2s ease;
+  }
+  
+  .skill-chip:hover {
+    transform: translateY(-1px);
+  }
+  
+  .profile-card {
+    transition: all 0.3s ease;
+  }
+  
+  .profile-card:hover {
+    transform: translateY(-2px);
+  }
+  
+  .toggle-checkbox:checked {
+    right: 0;
+    border-color: var(--platform-accent);
+  }
+  
+  .toggle-label {
+    background-color: #cbd5e0;
+  }
+  
+  .toggle-checkbox:checked + .toggle-label {
+    background-color: var(--platform-accent);
+  }
+}
