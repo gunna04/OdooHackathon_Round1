@@ -17,10 +17,50 @@ export default function Home() {
   const { data: stats } = useQuery({
     queryKey: ["/api/admin/stats"],
     enabled: !!user?.isAdmin,
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const res = await fetch("/api/admin/stats", {
+        headers,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const text = (await res.text()) || res.statusText;
+        throw new Error(`${res.status}: ${text}`);
+      }
+
+      return await res.json();
+    },
   });
 
   const { data: recentSwaps } = useQuery({
     queryKey: ["/api/swap-requests"],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const res = await fetch("/api/swap-requests", {
+        headers,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const text = (await res.text()) || res.statusText;
+        throw new Error(`${res.status}: ${text}`);
+      }
+
+      return await res.json();
+    },
   });
 
   // Redirect to login if not authenticated
@@ -99,7 +139,7 @@ export default function Home() {
                   <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
                     <TrendingUp className="w-6 h-6 text-green-600" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900">{user.skills?.filter(s => s.type === 'offered').length || 0}</h3>
+                  <h3 className="text-2xl font-bold text-gray-900">{user.skills?.filter((s: any) => s.type === 'offered').length || 0}</h3>
                   <p className="text-gray-600">Skills Offered</p>
                 </CardContent>
               </Card>
@@ -175,7 +215,7 @@ export default function Home() {
 
             {recentSwapsList.length > 0 ? (
               <div className="space-y-4">
-                {recentSwapsList.map((swap) => (
+                {recentSwapsList.map((swap: any) => (
                   <Card key={swap.id}>
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between">

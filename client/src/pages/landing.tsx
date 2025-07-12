@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "wouter";
 import { 
   ArrowRight, 
   Users, 
@@ -63,19 +64,21 @@ export default function Landing() {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="ghost" 
-                className="text-gray-700 hover:bg-gray-100"
-                onClick={() => window.location.href = '/api/login'}
-              >
-                Sign In
-              </Button>
-              <Button 
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
-                onClick={() => window.location.href = '/api/login'}
-              >
-                Join Now
-              </Button>
+              <Link href="/login">
+                <Button 
+                  variant="ghost" 
+                  className="text-gray-700 hover:bg-gray-100"
+                >
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button 
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+                >
+                  Join Now
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -98,14 +101,15 @@ export default function Landing() {
                 The world's most exciting platform for skill exchange. Learn something new while teaching what you love.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-8">
-                <Button 
-                  size="lg" 
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-xl transform hover:scale-105 transition-all"
-                  onClick={() => window.location.href = '/api/login'}
-                >
-                  Start Swapping Now
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
+                <Link href="/register">
+                  <Button 
+                    size="lg" 
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-xl transform hover:scale-105 transition-all"
+                  >
+                    Start Swapping Now
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
                 <Button 
                   size="lg" 
                   variant="outline" 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +18,15 @@ interface UserProfileCardProps {
 
 export default function UserProfileCard({ user }: UserProfileCardProps) {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState("");
   const [selectedOfferedSkill, setSelectedOfferedSkill] = useState<number | null>(null);
   const [selectedWantedSkill, setSelectedWantedSkill] = useState<number | null>(null);
+
+  // Check if this is the current user's profile
+  const isCurrentUser = currentUser?.id === user.id;
 
   const sendRequestMutation = useMutation({
     mutationFn: async (requestData: any) => {
@@ -206,49 +211,56 @@ export default function UserProfileCard({ user }: UserProfileCardProps) {
             <Clock className="w-3 h-3 mr-1" />
             {getAvailabilityText()}
           </div>
-          <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="bg-primary hover:bg-primary/90">
-                <MessageSquare className="w-3 h-3 mr-1" />
-                Request Swap
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>
-                  Request Swap with {user.firstName}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Your message
-                  </label>
-                  <Textarea
-                    placeholder="Introduce yourself and explain what you'd like to learn and teach..."
-                    value={requestMessage}
-                    onChange={(e) => setRequestMessage(e.target.value)}
-                    rows={4}
-                  />
+          {isCurrentUser ? (
+            <Button size="sm" variant="outline" disabled>
+              <MessageSquare className="w-3 h-3 mr-1" />
+              Your Profile
+            </Button>
+          ) : (
+            <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="bg-primary hover:bg-primary/90">
+                  <MessageSquare className="w-3 h-3 mr-1" />
+                  Request Swap
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    Request Swap with {user.firstName}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Your message
+                    </label>
+                    <Textarea
+                      placeholder="Introduce yourself and explain what you'd like to learn and teach..."
+                      value={requestMessage}
+                      onChange={(e) => setRequestMessage(e.target.value)}
+                      rows={4}
+                    />
+                  </div>
+                  <div className="flex space-x-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsRequestDialogOpen(false)}
+                      disabled={sendRequestMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleSendRequest}
+                      disabled={sendRequestMutation.isPending}
+                    >
+                      {sendRequestMutation.isPending ? "Sending..." : "Send Request"}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex space-x-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsRequestDialogOpen(false)}
-                    disabled={sendRequestMutation.isPending}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleSendRequest}
-                    disabled={sendRequestMutation.isPending}
-                  >
-                    {sendRequestMutation.isPending ? "Sending..." : "Send Request"}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </CardContent>
     </Card>

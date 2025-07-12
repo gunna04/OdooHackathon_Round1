@@ -5,8 +5,12 @@ import {
   swapRequests,
   reviews,
   reports,
+  announcements,
+  userModeration,
+  skillModeration,
   type User,
   type UpsertUser,
+  type CreateUser,
   type InsertSkill,
   type Skill,
   type InsertAvailability,
@@ -17,6 +21,12 @@ import {
   type Review,
   type InsertReport,
   type Report,
+  type InsertAnnouncement,
+  type Announcement,
+  type InsertUserModeration,
+  type UserModeration,
+  type InsertSkillModeration,
+  type SkillModeration,
   type UserWithSkills,
   type SwapRequestWithDetails,
 } from "@shared/schema";
@@ -24,11 +34,15 @@ import { db } from "./db";
 import { eq, and, or, like, ilike, desc, asc, count, sql } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations (required for Replit Auth)
+  // User operations (supports both local auth and OAuth)
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: CreateUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUserLastActive(userId: string): Promise<void>;
   getUserWithSkills(id: string): Promise<UserWithSkills | undefined>;
   searchUsers(query: string, filters?: { location?: string; skillType?: string; level?: string }): Promise<UserWithSkills[]>;
+  getAllUsers(): Promise<User[]>;
   
   // Skills operations
   createSkill(skill: InsertSkill): Promise<Skill>;
@@ -64,6 +78,29 @@ export interface IStorage {
     pendingReviews: number;
     totalReports: number;
   }>;
+  
+  // User moderation
+  moderateUser(moderation: InsertUserModeration): Promise<UserModeration>;
+  getUserModerationHistory(userId: string): Promise<UserModeration[]>;
+  isUserBanned(userId: string): Promise<boolean>;
+  
+  // Skill moderation
+  moderateSkill(moderation: InsertSkillModeration): Promise<SkillModeration>;
+  getSkillModerationHistory(skillId: number): Promise<SkillModeration[]>;
+  
+  // Announcements
+  createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
+  getActiveAnnouncements(): Promise<Announcement[]>;
+  updateAnnouncement(id: number, updates: Partial<InsertAnnouncement>): Promise<Announcement | undefined>;
+  deleteAnnouncement(id: number): Promise<boolean>;
+  
+  // Reports and analytics
+  generateActivityReport(): Promise<{
+    users: any[];
+    swaps: any[];
+    skills: any[];
+    reports: any[];
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -71,6 +108,31 @@ export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(userData: CreateUser): Promise<User> {
+    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...userData,
+        id: userId,
+        authProvider: 'local',
+      })
+      .returning();
+    return user;
+  }
+
+  async updateUserLastActive(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ lastActiveAt: new Date() })
+      .where(eq(users.id, userId));
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
@@ -155,6 +217,13 @@ export class DatabaseStorage implements IStorage {
     );
 
     return usersWithSkills.filter(user => user !== null) as UserWithSkills[];
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .orderBy(asc(users.firstName), asc(users.lastName));
   }
 
   // Skills operations
@@ -383,6 +452,111 @@ export class DatabaseStorage implements IStorage {
       activeSwaps: activeSwapCount.count,
       pendingReviews: pendingReviewCount.count,
       totalReports: reportCount.count,
+    };
+  }
+
+  // User moderation
+  async moderateUser(moderation: InsertUserModeration): Promise<UserModeration> {
+    const [newModeration] = await db.insert(userModeration).values(moderation).returning();
+    return newModeration;
+  }
+
+  async getUserModerationHistory(userId: string): Promise<UserModeration[]> {
+    return await db
+      .select()
+      .from(userModeration)
+      .where(eq(userModeration.userId, userId))
+      .orderBy(desc(userModeration.createdAt));
+  }
+
+  async isUserBanned(userId: string): Promise<boolean> {
+    const [activeBan] = await db
+      .select()
+      .from(userModeration)
+      .where(
+        and(
+          eq(userModeration.userId, userId),
+          eq(userModeration.action, "ban"),
+          eq(userModeration.isActive, true),
+          or(
+            sql`${userModeration.expiresAt} IS NULL`,
+            sql`${userModeration.expiresAt} > ${new Date()}`
+          )
+        )
+      );
+    return !!activeBan;
+  }
+
+  // Skill moderation
+  async moderateSkill(moderation: InsertSkillModeration): Promise<SkillModeration> {
+    const [newModeration] = await db.insert(skillModeration).values(moderation).returning();
+    return newModeration;
+  }
+
+  async getSkillModerationHistory(skillId: number): Promise<SkillModeration[]> {
+    return await db
+      .select()
+      .from(skillModeration)
+      .where(eq(skillModeration.skillId, skillId))
+      .orderBy(desc(skillModeration.createdAt));
+  }
+
+  // Announcements
+  async createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement> {
+    const [newAnnouncement] = await db.insert(announcements).values(announcement).returning();
+    return newAnnouncement;
+  }
+
+  async getActiveAnnouncements(): Promise<Announcement[]> {
+    return await db
+      .select()
+      .from(announcements)
+      .where(
+        and(
+          eq(announcements.isActive, true),
+          or(
+            sql`${announcements.expiresAt} IS NULL`,
+            sql`${announcements.expiresAt} > ${new Date()}`
+          )
+        )
+      )
+      .orderBy(desc(announcements.createdAt));
+  }
+
+  async updateAnnouncement(id: number, updates: Partial<InsertAnnouncement>): Promise<Announcement | undefined> {
+    const [updatedAnnouncement] = await db
+      .update(announcements)
+      .set(updates)
+      .where(eq(announcements.id, id))
+      .returning();
+    return updatedAnnouncement;
+  }
+
+  async deleteAnnouncement(id: number): Promise<boolean> {
+    const [deletedAnnouncement] = await db
+      .delete(announcements)
+      .where(eq(announcements.id, id))
+      .returning();
+    return !!deletedAnnouncement;
+  }
+
+  // Reports and analytics
+  async generateActivityReport(): Promise<{
+    users: any[];
+    swaps: any[];
+    skills: any[];
+    reports: any[];
+  }> {
+    const allUsers = await db.select().from(users);
+    const allSwaps = await db.select().from(swapRequests);
+    const allSkills = await db.select().from(skills);
+    const allReports = await db.select().from(reports);
+
+    return {
+      users: allUsers,
+      swaps: allSwaps,
+      skills: allSkills,
+      reports: allReports,
     };
   }
 }

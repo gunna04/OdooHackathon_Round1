@@ -23,6 +23,26 @@ export default function InboxPage() {
   const { data: swapRequests, isLoading: isLoadingRequests } = useQuery({
     queryKey: ["/api/swap-requests"],
     enabled: !!user,
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const res = await fetch("/api/swap-requests", {
+        headers,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const text = (await res.text()) || res.statusText;
+        throw new Error(`${res.status}: ${text}`);
+      }
+
+      return await res.json();
+    },
   });
 
   // Redirect to login if not authenticated

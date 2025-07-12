@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuthRoutes, authenticateToken, requireAdmin } from "./auth";
 import { z } from "zod";
 import {
   insertSkillSchema,
@@ -9,36 +9,26 @@ import {
   insertSwapRequestSchema,
   insertReviewSchema,
   insertReportSchema,
+  insertAnnouncementSchema,
+  insertUserModerationSchema,
+  insertSkillModerationSchema,
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
-
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUserWithSkills(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // Setup authentication routes
+  setupAuthRoutes(app);
 
   // User routes
-  app.put('/api/users/profile', isAuthenticated, async (req: any, res) => {
+  app.put('/api/users/profile', authenticateToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.userId;
       const { bio, location, isPublic } = req.body;
       
       const updatedUser = await storage.upsertUser({
         id: userId,
-        email: req.user.claims.email,
-        firstName: req.user.claims.first_name,
-        lastName: req.user.claims.last_name,
-        profileImageUrl: req.user.claims.profile_image_url,
+        email: req.user.email,
+        firstName: req.user.firstName,
+        lastName: req.user.lastName,
         bio,
         location,
         isPublic,
@@ -70,9 +60,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Skills routes
-  app.post('/api/skills', isAuthenticated, async (req: any, res) => {
+  app.post('/api/skills', authenticateToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.userId;
       const skillData = insertSkillSchema.parse({ ...req.body, userId });
       
       const skill = await storage.createSkill(skillData);
@@ -83,9 +73,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/skills/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/skills/:id', authenticateToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.userId;
       const skillId = parseInt(req.params.id);
       
       const success = await storage.deleteSkill(skillId, userId);
@@ -101,9 +91,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Availability routes
-  app.put('/api/availability', isAuthenticated, async (req: any, res) => {
+  app.put('/api/availability', authenticateToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.userId;
       const availabilitySlots = req.body.map((slot: any) => 
         insertAvailabilitySchema.parse({ ...slot, userId })
       );
@@ -117,9 +107,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Swap request routes
-  app.post('/api/swap-requests', isAuthenticated, async (req: any, res) => {
+  app.post('/api/swap-requests', authenticateToken, async (req: any, res) => {
     try {
-      const requesterId = req.user.claims.sub;
+      const requesterId = req.user.userId;
       const requestData = insertSwapRequestSchema.parse({ ...req.body, requesterId });
       
       const swapRequest = await storage.createSwapRequest(requestData);
@@ -130,9 +120,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/swap-requests', isAuthenticated, async (req: any, res) => {
+  app.get('/api/swap-requests', authenticateToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.userId;
       const swapRequests = await storage.getUserSwapRequests(userId);
       res.json(swapRequests);
     } catch (error) {
@@ -141,9 +131,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/swap-requests/:id/status', isAuthenticated, async (req: any, res) => {
+  app.put('/api/swap-requests/:id/status', authenticateToken, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.userId;
       const requestId = parseInt(req.params.id);
       const { status } = req.body;
       
@@ -160,9 +150,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Review routes
-  app.post('/api/reviews', isAuthenticated, async (req: any, res) => {
+  app.post('/api/reviews', authenticateToken, async (req: any, res) => {
     try {
-      const reviewerId = req.user.claims.sub;
+      const reviewerId = req.user.userId;
       const reviewData = insertReviewSchema.parse({ ...req.body, reviewerId });
       
       const review = await storage.createReview(reviewData);
@@ -185,13 +175,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin routes
-  app.get('/api/admin/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/stats', authenticateToken, requireAdmin, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-      
       const stats = await storage.getActivityStats();
       res.json(stats);
     } catch (error) {
@@ -200,13 +185,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/swap-requests', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/swap-requests', authenticateToken, requireAdmin, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-      
       const swapRequests = await storage.getAllSwapRequests();
       res.json(swapRequests);
     } catch (error) {
@@ -215,13 +195,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/reports', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/reports', authenticateToken, requireAdmin, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-      
       const reports = await storage.getPendingReports();
       res.json(reports);
     } catch (error) {
@@ -230,13 +205,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/admin/reports/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/users', authenticateToken, requireAdmin, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user?.isAdmin) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-      
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.put('/api/admin/reports/:id', authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
       const reportId = parseInt(req.params.id);
       const { status } = req.body;
       
@@ -248,10 +228,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Report routes
-  app.post('/api/reports', isAuthenticated, async (req: any, res) => {
+  // User moderation routes
+  app.post('/api/admin/users/:id/moderate', authenticateToken, requireAdmin, async (req: any, res) => {
     try {
-      const reporterId = req.user.claims.sub;
+      const userId = req.params.id;
+      const moderatorId = req.user.userId;
+      const moderationData = insertUserModerationSchema.parse({ ...req.body, userId, createdBy: moderatorId });
+      
+      const moderation = await storage.moderateUser(moderationData);
+      res.json(moderation);
+    } catch (error) {
+      console.error("Error moderating user:", error);
+      res.status(400).json({ message: "Failed to moderate user" });
+    }
+  });
+
+  app.get('/api/admin/users/:id/moderation-history', authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      const history = await storage.getUserModerationHistory(userId);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching user moderation history:", error);
+      res.status(500).json({ message: "Failed to fetch moderation history" });
+    }
+  });
+
+  app.get('/api/admin/users/:id/is-banned', authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      const isBanned = await storage.isUserBanned(userId);
+      res.json({ isBanned });
+    } catch (error) {
+      console.error("Error checking user ban status:", error);
+      res.status(500).json({ message: "Failed to check ban status" });
+    }
+  });
+
+  // Skill moderation routes
+  app.post('/api/admin/skills/:id/moderate', authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const skillId = parseInt(req.params.id);
+      const moderatorId = req.user.userId;
+      const moderationData = insertSkillModerationSchema.parse({ ...req.body, skillId, createdBy: moderatorId });
+      
+      const moderation = await storage.moderateSkill(moderationData);
+      res.json(moderation);
+    } catch (error) {
+      console.error("Error moderating skill:", error);
+      res.status(400).json({ message: "Failed to moderate skill" });
+    }
+  });
+
+  app.get('/api/admin/skills/:id/moderation-history', authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const skillId = parseInt(req.params.id);
+      const history = await storage.getSkillModerationHistory(skillId);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching skill moderation history:", error);
+      res.status(500).json({ message: "Failed to fetch moderation history" });
+    }
+  });
+
+  // Announcement routes
+  app.post('/api/admin/announcements', authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const createdBy = req.user.userId;
+      const announcementData = insertAnnouncementSchema.parse({ ...req.body, createdBy });
+      
+      const announcement = await storage.createAnnouncement(announcementData);
+      res.json(announcement);
+    } catch (error) {
+      console.error("Error creating announcement:", error);
+      res.status(400).json({ message: "Failed to create announcement" });
+    }
+  });
+
+  app.get('/api/admin/announcements', authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const announcements = await storage.getActiveAnnouncements();
+      res.json(announcements);
+    } catch (error) {
+      console.error("Error fetching announcements:", error);
+      res.status(500).json({ message: "Failed to fetch announcements" });
+    }
+  });
+
+  app.put('/api/admin/announcements/:id', authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updatedAnnouncement = await storage.updateAnnouncement(id, req.body);
+      if (updatedAnnouncement) {
+        res.json(updatedAnnouncement);
+      } else {
+        res.status(404).json({ message: "Announcement not found" });
+      }
+    } catch (error) {
+      console.error("Error updating announcement:", error);
+      res.status(500).json({ message: "Failed to update announcement" });
+    }
+  });
+
+  app.delete('/api/admin/announcements/:id', authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteAnnouncement(id);
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ message: "Announcement not found" });
+      }
+    } catch (error) {
+      console.error("Error deleting announcement:", error);
+      res.status(500).json({ message: "Failed to delete announcement" });
+    }
+  });
+
+  // Activity report route
+  app.get('/api/admin/reports/activity/download', authenticateToken, requireAdmin, async (req: any, res) => {
+    try {
+      const report = await storage.generateActivityReport();
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', 'attachment; filename="activity-report.json"');
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating activity report:", error);
+      res.status(500).json({ message: "Failed to generate activity report" });
+    }
+  });
+
+  // Report routes
+  app.post('/api/reports', authenticateToken, async (req: any, res) => {
+    try {
+      const reporterId = req.user.userId;
       const reportData = insertReportSchema.parse({ ...req.body, reporterId });
       
       const report = await storage.createReport(reportData);

@@ -25,10 +25,11 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table (required for Replit Auth)
+// User storage table (supports both local auth and OAuth)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
   email: varchar("email").unique(),
+  password: varchar("password"), // Hashed password for local auth
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -36,6 +37,8 @@ export const users = pgTable("users", {
   location: varchar("location"),
   isPublic: boolean("is_public").default(true),
   isAdmin: boolean("is_admin").default(false),
+  authProvider: varchar("auth_provider").default("local"), // 'local', 'google', etc.
+  lastActiveAt: timestamp("last_active_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -90,6 +93,38 @@ export const reports = pgTable("reports", {
   reason: varchar("reason").notNull(),
   description: text("description"),
   status: varchar("status").notNull().default("pending"), // 'pending', 'reviewed', 'resolved'
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const announcements = pgTable("announcements", {
+  id: serial("id").primaryKey(),
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  type: varchar("type").notNull().default("info"), // 'info', 'warning', 'alert'
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+});
+
+export const userModeration = pgTable("user_moderation", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  action: varchar("action").notNull(), // 'warn', 'suspend', 'ban'
+  reason: text("reason").notNull(),
+  duration: integer("duration"), // days, null for permanent
+  expiresAt: timestamp("expires_at"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const skillModeration = pgTable("skill_moderation", {
+  id: serial("id").primaryKey(),
+  skillId: integer("skill_id").notNull().references(() => skills.id, { onDelete: "cascade" }),
+  action: varchar("action").notNull(), // 'flag', 'reject', 'approve'
+  reason: text("reason"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -175,10 +210,48 @@ export const reportsRelations = relations(reports, ({ one }) => ({
   }),
 }));
 
+export const announcementsRelations = relations(announcements, ({ one }) => ({
+  creator: one(users, {
+    fields: [announcements.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const userModerationRelations = relations(userModeration, ({ one }) => ({
+  user: one(users, {
+    fields: [userModeration.userId],
+    references: [users.id],
+  }),
+  moderator: one(users, {
+    fields: [userModeration.createdBy],
+    references: [users.id],
+  }),
+}));
+
+export const skillModerationRelations = relations(skillModeration, ({ one }) => ({
+  skill: one(skills, {
+    fields: [skillModeration.skillId],
+    references: [skills.id],
+  }),
+  moderator: one(users, {
+    fields: [skillModeration.createdBy],
+    references: [users.id],
+  }),
+}));
+
 // Zod schemas for validation
 export const upsertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
   updatedAt: true,
+  lastActiveAt: true,
+});
+
+export const createUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastActiveAt: true,
+  authProvider: true,
 });
 
 export const insertSkillSchema = createInsertSchema(skills).omit({
@@ -207,8 +280,24 @@ export const insertReportSchema = createInsertSchema(reports).omit({
   createdAt: true,
 });
 
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserModerationSchema = createInsertSchema(userModeration).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSkillModerationSchema = createInsertSchema(skillModeration).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
+export type CreateUser = z.infer<typeof createUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertSkill = z.infer<typeof insertSkillSchema>;
 export type Skill = typeof skills.$inferSelect;
@@ -220,6 +309,12 @@ export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type Review = typeof reviews.$inferSelect;
 export type InsertReport = z.infer<typeof insertReportSchema>;
 export type Report = typeof reports.$inferSelect;
+export type InsertAnnouncement = z.infer<typeof insertAnnouncementSchema>;
+export type Announcement = typeof announcements.$inferSelect;
+export type InsertUserModeration = z.infer<typeof insertUserModerationSchema>;
+export type UserModeration = typeof userModeration.$inferSelect;
+export type InsertSkillModeration = z.infer<typeof insertSkillModerationSchema>;
+export type SkillModeration = typeof skillModeration.$inferSelect;
 
 // Extended types for API responses
 export type UserWithSkills = User & {

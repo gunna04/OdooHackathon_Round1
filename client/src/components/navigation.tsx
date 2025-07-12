@@ -9,17 +9,38 @@ import { useQuery } from "@tanstack/react-query";
 
 export default function Navigation() {
   const [location] = useLocation();
-  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
   const { data: swapRequests } = useQuery({
     queryKey: ["/api/swap-requests"],
     enabled: !!user,
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const res = await fetch("/api/swap-requests", {
+        headers,
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const text = (await res.text()) || res.statusText;
+        throw new Error(`${res.status}: ${text}`);
+      }
+
+      return await res.json();
+    },
   });
 
-  const unreadCount = swapRequests?.filter((req: any) => 
+  const unreadCount = Array.isArray(swapRequests) ? swapRequests.filter((req: any) => 
     req.status === 'pending' && req.receiverId === user?.id
-  ).length || 0;
+  ).length : 0;
 
   const navItems = [
     { href: "/", label: "Home", icon: Users },
@@ -40,7 +61,8 @@ export default function Navigation() {
   };
 
   const handleLogout = () => {
-    window.location.href = "/api/logout";
+    logout();
+    setLocation("/");
   };
 
   const NavLinks = ({ mobile = false }) => (

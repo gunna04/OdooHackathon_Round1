@@ -18,12 +18,28 @@ export default function SearchPage() {
 
   // Query for users with their skills - modified to show all users when no search query
   const { data: users, isLoading } = useQuery({
-    queryKey: ["/api/users/search", { 
-      q: searchQuery || "", 
-      location: location === "any" ? "" : location, 
-      skillType: skillType === "all" ? "" : skillType, 
-      level: level === "all" ? "" : level 
-    }],
+    queryKey: ["/api/users/search", searchQuery, location, skillType, level],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('q', searchQuery);
+      if (location !== "any") params.append('location', location);
+      if (skillType !== "all") params.append('skillType', skillType);
+      if (level !== "all") params.append('level', level);
+      
+      const url = `/api/users/search${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+      
+      return response.json();
+    },
     enabled: true,
   });
 
@@ -236,7 +252,7 @@ export default function SearchPage() {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {users.map((user) => (
+                  {users.map((user: any) => (
                     <UserProfileCard key={user.id} user={user} />
                   ))}
                 </div>
