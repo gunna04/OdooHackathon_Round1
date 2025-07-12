@@ -2,6 +2,9 @@
 
 A minimalist and elegant platform where users can exchange skills and knowledge with each other. Built with React, TypeScript, Express.js, and PostgreSQL.
 
+TishyaJha tishyajha04@gmail.com
+YuvrajSingh yuvrajsingh0251@gmail.com
+VideoLink:https://drive.google.com/file/d/1UgDX076e_AsHY9RxB26xFd0cEN884vmE/view?usp=drive_link
 ## Features
 
 - **User Authentication**: JWT-based authentication system
