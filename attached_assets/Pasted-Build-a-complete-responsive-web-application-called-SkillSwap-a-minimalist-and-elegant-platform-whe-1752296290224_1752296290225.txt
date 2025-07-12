@@ -1,0 +1,129 @@
+Build a complete, responsive web application called SkillSwap, a minimalist and elegant platform where users can exchange skills. The app should be built using the MERN stack (MongoDB, Express.js, React.js, Node.js). It must feature clean and intuitive UI with a soft pastel palette and professional typography.
+
+📁 File Structure:
+pgsql
+Copy
+Edit
+/skill-swap-platform
+├── backend/
+│   ├── models/
+│   ├── routes/
+│   ├── controllers/
+│   ├── middleware/
+│   ├── utils/
+│   └── server.js
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── context/
+│   │   ├── hooks/
+│   │   ├── App.js
+│   │   ├── index.js
+│   │   └── styles/
+├── .env
+├── README.md
+└── package.json
+👤 User Features:
+Register/Login with email/password (JWT-based auth)
+
+Profile:
+
+Name, photo (optional), location (optional), short bio
+
+List of Skills Offered with Proficiency (beginner/intermediate/expert)
+
+List of Skills Wanted with desired level
+
+Set availability by selecting days and time slots
+
+Toggle Profile Visibility: Public or Private
+
+Browse/search/filter users:
+
+Search by skill (e.g., “Excel” or “Photoshop”)
+
+Filter by proficiency, availability, location (optional), public only
+
+Send swap request:
+
+With message and proposed terms
+
+Accept / Reject / Counteroffer with new terms
+
+Inbox:
+
+View and manage requests
+
+Delete expired/pending ones after timeout
+
+Rate and review after swap completion
+
+⚙️ Admin Role:
+Accessible via /admin-dashboard (with separate admin login):
+
+See pending, accepted, or canceled swap requests
+
+Reject/flag inappropriate skill entries or bios
+
+Ban users violating community rules
+
+Send platform-wide announcements (via modal or dashboard)
+
+Download user activity logs, reviews, and swap statistics as CSV
+
+💡 UI/UX Design:
+Theme: Minimalist & Elegant
+
+Typography: Use Inter or Nunito Sans
+
+Palette: #f0f4f8 (bg), #2e2e2e (text), #5c6bc0 (accent), white
+
+Use card-based layouts for user profiles and swaps
+
+Keep nav fixed-top with routes like Home, Search, Inbox, Profile, Admin
+
+Modals for editing profile, swap requests, counteroffers
+
+Use React Hooks, Context API, and Axios for frontend state/API calls
+
+⏰ Scheduling Feature:
+Multi-day selector with time slot inputs (e.g., Mon: 2–4PM)
+
+Save as availability metadata in MongoDB
+
+📦 Backend Notes:
+Models:
+
+User: name, bio, skillsOffered, skillsWanted, availability, visibility, isAdmin
+
+Swap: requesterId, receiverId, offeredSkill, requestedSkill, status, messages, rating
+
+Message, Review, Report
+
+Middleware:
+
+Auth (JWT check)
+
+Admin check
+
+Input sanitization
+
+Utilities:
+
+Time overlap matching logic
+
+CSV generator for reports
+
+✅ Final Requirements:
+Responsive for mobile and desktop
+
+Dark mode toggle optional
+
+Fully functional on Replit
+
+Add sample seed data for quick testing
+
+Provide README with run instructions
