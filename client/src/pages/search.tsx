@@ -11,13 +11,19 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [location, setLocation] = useState("");
-  const [skillType, setSkillType] = useState("");
-  const [level, setLevel] = useState("");
+  const [location, setLocation] = useState("any");
+  const [skillType, setSkillType] = useState("all");
+  const [level, setLevel] = useState("all");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
+  // Query for users with their skills - modified to show all users when no search query
   const { data: users, isLoading } = useQuery({
-    queryKey: ["/api/users/search", { q: searchQuery, location, skillType, level }],
+    queryKey: ["/api/users/search", { 
+      q: searchQuery || "", 
+      location: location === "any" ? "" : location, 
+      skillType: skillType === "all" ? "" : skillType, 
+      level: level === "all" ? "" : level 
+    }],
     enabled: true,
   });
 
@@ -29,13 +35,13 @@ export default function SearchPage() {
   const removeFilter = (filterType: string) => {
     switch (filterType) {
       case 'location':
-        setLocation("");
+        setLocation("any");
         break;
       case 'skillType':
-        setSkillType("");
+        setSkillType("all");
         break;
       case 'level':
-        setLevel("");
+        setLevel("all");
         break;
     }
     setActiveFilters(prev => prev.filter(f => f !== filterType));
@@ -43,18 +49,18 @@ export default function SearchPage() {
 
   const clearAllFilters = () => {
     setSearchQuery("");
-    setLocation("");
-    setSkillType("");
-    setLevel("");
+    setLocation("any");
+    setSkillType("all");
+    setLevel("all");
     setActiveFilters([]);
   };
 
   // Update active filters when filters change
   useState(() => {
     const filters = [];
-    if (location) filters.push('location');
-    if (skillType) filters.push('skillType');
-    if (level) filters.push('level');
+    if (location && location !== "any") filters.push('location');
+    if (skillType && skillType !== "all") filters.push('skillType');
+    if (level && level !== "all") filters.push('level');
     setActiveFilters(filters);
   });
 
@@ -69,6 +75,9 @@ export default function SearchPage() {
             <div className="text-center mb-12">
               <h1 className="text-4xl font-bold text-gray-900 mb-4">Discover Amazing Skills</h1>
               <p className="text-lg text-gray-600">Find experts in any field and connect for skill exchanges</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Leave search empty to browse all active users and their skillsets
+              </p>
             </div>
 
             {/* Search Interface */}
@@ -100,7 +109,7 @@ export default function SearchPage() {
                           <SelectValue placeholder="Any Location" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Any Location</SelectItem>
+                          <SelectItem value="any">Any Location</SelectItem>
                           <SelectItem value="New York">New York</SelectItem>
                           <SelectItem value="San Francisco">San Francisco</SelectItem>
                           <SelectItem value="London">London</SelectItem>
@@ -113,7 +122,7 @@ export default function SearchPage() {
                   {/* Active Filters */}
                   {activeFilters.length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {location && (
+                      {location && location !== "any" && (
                         <Badge variant="secondary" className="flex items-center gap-1">
                           Location: {location}
                           <X 
@@ -122,18 +131,18 @@ export default function SearchPage() {
                           />
                         </Badge>
                       )}
-                      {skillType && (
+                      {skillType && skillType !== "all" && (
                         <Badge variant="secondary" className="flex items-center gap-1">
-                          Type: {skillType}
+                          Type: {skillType === "offered" ? "Skills Offered" : "Skills Wanted"}
                           <X 
                             className="h-3 w-3 cursor-pointer" 
                             onClick={() => removeFilter('skillType')}
                           />
                         </Badge>
                       )}
-                      {level && (
+                      {level && level !== "all" && (
                         <Badge variant="secondary" className="flex items-center gap-1">
-                          Level: {level}
+                          Level: {level.charAt(0).toUpperCase() + level.slice(1)}
                           <X 
                             className="h-3 w-3 cursor-pointer" 
                             onClick={() => removeFilter('level')}
@@ -160,7 +169,7 @@ export default function SearchPage() {
                         <SelectValue placeholder="Skill Type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Types</SelectItem>
+                        <SelectItem value="all">All Types</SelectItem>
                         <SelectItem value="offered">Skills Offered</SelectItem>
                         <SelectItem value="wanted">Skills Wanted</SelectItem>
                       </SelectContent>
@@ -171,7 +180,7 @@ export default function SearchPage() {
                         <SelectValue placeholder="Level" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Levels</SelectItem>
+                        <SelectItem value="all">All Levels</SelectItem>
                         <SelectItem value="beginner">Beginner</SelectItem>
                         <SelectItem value="intermediate">Intermediate</SelectItem>
                         <SelectItem value="expert">Expert</SelectItem>
@@ -216,9 +225,14 @@ export default function SearchPage() {
             ) : users && users.length > 0 ? (
               <>
                 <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    Found {users.length} {users.length === 1 ? 'result' : 'results'}
-                  </h2>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {searchQuery ? `Found ${users.length} ${users.length === 1 ? 'result' : 'results'}` : 'Active SkillSwap Users'}
+                    </h2>
+                    <p className="text-gray-600 mt-1">
+                      {searchQuery ? `Results for "${searchQuery}"` : 'Discover amazing skills from our community members'}
+                    </p>
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -227,6 +241,21 @@ export default function SearchPage() {
                   ))}
                 </div>
               </>
+            ) : !searchQuery ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Welcome to SkillSwap Search
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    Search for specific skills above or browse all active users in our community.
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Start typing a skill name to discover amazing talent!
+                  </p>
+                </CardContent>
+              </Card>
             ) : (
               <Card>
                 <CardContent className="p-12 text-center">
@@ -238,7 +267,7 @@ export default function SearchPage() {
                     Try adjusting your search criteria or explore different skills.
                   </p>
                   <Button onClick={clearAllFilters} variant="outline">
-                    Clear Filters
+                    Clear Filters & Browse All Users
                   </Button>
                 </CardContent>
               </Card>

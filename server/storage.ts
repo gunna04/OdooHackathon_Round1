@@ -115,30 +115,38 @@ export class DatabaseStorage implements IStorage {
     const baseUsers = await db
       .select()
       .from(users)
-      .where(and(...whereConditions));
+      .where(and(...whereConditions))
+      .orderBy(desc(users.updatedAt)); // Show recently active users first
 
     const usersWithSkills = await Promise.all(
       baseUsers.map(async (user) => {
         const userSkills = await this.getUserSkills(user.id);
         const userAvailability = await this.getUserAvailability(user.id);
 
-        // Filter by skills if query or skill filters are provided
+        // If no query, show all users with skills (active users)
         let matchesQuery = true;
-        if (query) {
+        
+        // If there's a search query, filter by skill names and bio
+        if (query && query.trim() !== '') {
           matchesQuery = userSkills.some(skill => 
             skill.name.toLowerCase().includes(query.toLowerCase())
           ) || user.bio?.toLowerCase().includes(query.toLowerCase()) || false;
         }
 
-        if (filters?.skillType) {
+        // Apply skill type filter
+        if (filters?.skillType && filters.skillType !== 'all') {
           matchesQuery = matchesQuery && userSkills.some(skill => skill.type === filters.skillType);
         }
 
-        if (filters?.level) {
+        // Apply level filter
+        if (filters?.level && filters.level !== 'all') {
           matchesQuery = matchesQuery && userSkills.some(skill => skill.level === filters.level);
         }
 
-        return matchesQuery ? {
+        // Only show users who have at least one skill (active users)
+        const isActiveUser = userSkills.length > 0;
+
+        return (matchesQuery && isActiveUser) ? {
           ...user,
           skills: userSkills,
           availability: userAvailability,
